@@ -1,3 +1,5 @@
+
+
 /******************************************************************************
 This is an Arduino sketch to drive 4 LED panels based on MBI5034 LED drivers.
 
@@ -324,7 +326,7 @@ void ARDUINO_ISR_ATTR onTimer() {
     bank = 0;
   
 }
-#endif USE_INTERRUPTS
+#endif //USE_INTERRUPTS
 
 #define LED_BLACK 0
 #define LED_BLUE 1
@@ -669,8 +671,6 @@ if(now-lastUpdate>updateInterval)
 
 
 }
-
-
 
 
 

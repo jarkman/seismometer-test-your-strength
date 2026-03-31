@@ -1,3 +1,14 @@
+
+
+
+/* TODO
+handle probablities in ints
+do drawing in a series of slices spread over time
+maybe do accelerometer interrupts?
+choose best axis for accelerometer
+
+*/
+
 /**************************************************************************/
 /*!
     @file     Adafruit_MMA8451.h
@@ -24,6 +35,7 @@ void loopLEDPanels();
 
 void setup(void) {
    Serial.begin(115200);
+   delay(5000);
   Serial.println("Begin...");
   setupLEDPanels();
   setupAccelerometer();
@@ -34,7 +46,8 @@ void setupAccelerometer()
   
 
   if (! mma.begin()) {
-    Serial.println("Couldnt start");
+    Serial.println("Couldnt start accelerometer");
+    delay(1000);
     while (1);
   }
   Serial.println("MMA8451 found!");
@@ -50,25 +63,9 @@ void setupAccelerometer()
 
   Serial.print("Range = "); Serial.print(2 << mma.getRange());  
   Serial.println("G");
-
-   // Set timer frequency to 1Mhz
-  int32_t timerHz = 1000000;
-  accelerometerTimer = timerBegin(timerHz);
-
-  // Attach onTimer function to our timer.
-  timerAttachInterrupt(accelerometerTimer, &onAccelerometerTimer);
-
-  int32_t hz = 100;
-  int32_t interval = timerHz/hz;
-  timerAlarm(accelerometerTimer, interval, true, 0);
   
 }
 
-void ARDUINO_ISR_ATTR onAccelerometerTimer() {
-  
-  readAccelerometer();
-  
-}
 
 double mx = 0;
 double my = 0;
@@ -81,24 +78,33 @@ bool was = false;
 int pulse = 0;
 long lastMicros = 0;
 
+int loops = 0;
 void loop() {
+  loops++;
+  if( loops%100 == 0)
+  {
+    //Serial.print("loop ");
+    //Serial.println(loops);
+  }
   loopLEDPanels();
   loopAccelerometer();
+  delay(10);
 }
 
 void loopAccelerometer()
 {
-
+  readAccelerometer();
 }
 
 void readAccelerometer()
 {
+  // can't do i2c inside an interrupt handler
   double a1 = 0.99;
   double a2 = 1.0-a1;
 
-  long now = micros();
-  long interval = now-lastMicros; // typically 2000
-  lastMicros = now;
+  long m = micros();
+  long interval = m-lastMicros; // typically 2000
+  lastMicros = m;
 
   // Read the 'raw' data in 14-bit counts
   mma.read();
@@ -149,6 +155,8 @@ void readAccelerometer()
     Serial.print(",      ");
     */
 
+    //Serial.print(interval);
+    //Serial.print(", ");
     Serial.print(pulse);
     Serial.print(", ");
     //Serial.print(interval);
