@@ -98,6 +98,7 @@ the various text functions and fonts.
 // I get some odd uneven brightness effects I do not understand.
 // The last bank to be updated, bank 3, is the only bright one. The other three are super-dim. Weird.
 #define USE_INTERRUPTS
+#define TIME_DRAWING
 
 class LedPanel : public Adafruit_GFX
 {
@@ -156,6 +157,24 @@ uint32_t drawDuration = 0;
 
 volatile bool flagUpdatingFrame = false;
 volatile bool flagDrawing = false;
+
+// we can't use random for every pixel, so here's a collection of random numbers in the range 0-99 we can use quickly
+#define NUM_RANDOMS 76
+int randoms[NUM_RANDOMS];
+
+int nextRandom = 0;
+
+void initRandoms()
+{
+  for(int i = 0; i<NUM_RANDOMS;i++)
+    randoms[i] = random(100);
+}
+
+int fastRandom()
+{
+  nextRandom = nextRandom%NUM_RANDOMS;
+  return randoms[nextRandom++];
+}
 
 void FillBuffer(byte b){
   for(uint8_t x=0; x<4; x++){
@@ -224,7 +243,8 @@ void UpdateFrame() {
   long isrStart = micros();
   flagUpdatingFrame = true;
 
-  if( false && isrCounter % 500 == 0 )
+#ifdef TIME_DRAWING
+  if( isrCounter % 500 == 0 )
   {
     Serial.print("updateFrame took ");
     Serial.print(lastIsrDurationMicros);
@@ -233,7 +253,8 @@ void UpdateFrame() {
     Serial.print("us, ");
     Serial.println(isrCounter);
   }
-   
+#endif
+
   byte * f = frame[bank];
   for (uint16_t n = 0; n<384; n++) {
 
@@ -284,6 +305,8 @@ void UpdateFrame() {
 
 void setupLEDPanels() {
  
+  initRandoms();
+
   //FillBuffer(0xFF);         // Set all LEDs on. (White)
   FillBuffer(0x00);         // Set all LEDs off. (Black)
 
@@ -299,8 +322,8 @@ void setupLEDPanels() {
   // Attach onTimer function to our timer.
   timerAttachInterrupt(timer, &onTimer);
 
-  // frame update takes ~330us so we can update at 3kz if we want!
-  int32_t hz = 1000;
+  // frame update takes ~330us so we can update at 3kz if we want! No p0int doing it faster than 3x the draw update rate though
+  int32_t hz = 400;
   int32_t interval = timerHz/hz;
   timerAlarm(timer, interval, true, 0);
 #endif // USE_INTERRUPTS
@@ -514,7 +537,7 @@ void fuzzyBlob(int16_t x0, int16_t y0, int16_t dx, int16_t dy, uint16_t color)
     for( int16_t y = y0-dy; y<= y0+dy; y++)
     {
 
-      float probability = 1.0 - ((fabs(x-x0)/((float)dx)) * (fabs(y-y0)/((float)dy)));
+      int32_t probability = 10000 - (((100 * abs(x-x0))/(dx)) * ((100 * abs(y-y0))/(dy)));
       /*
       Serial.print(x-x0);
       Serial.print(", ");
@@ -524,7 +547,7 @@ void fuzzyBlob(int16_t x0, int16_t y0, int16_t dx, int16_t dy, uint16_t color)
       Serial.println(probability);
       */
       
-      if( random(100)<probability*100.0)
+      if( fastRandom() <probability/100)
         panel.drawPixel(x%w, y%h, color);
     }
   }
@@ -542,9 +565,9 @@ void fuzzyBar(int16_t x0, int16_t dx, uint16_t color)
   {
     for( int16_t y = 0; y<=h; y++)
     {
-      float probability = 1.0 -  (fabs(x-x0)/((float)dx));
+      float probability = 100 -  (100*abs(x-x0)/(dx));
       
-      if( random(100)<probability*100.0)
+      if( fastRandom()<probability)
         panel.drawPixel(x%w, y%h, color);
     }
   }
@@ -600,7 +623,7 @@ void spinner()
   
 }
 
-void draw() // currently takes up to 50ms
+void draw() // currently takes around 1ms
 {
   if( flagUpdatingFrame ) // don't draw during update, to avoid tearing
     return;
@@ -625,7 +648,7 @@ void draw() // currently takes up to 50ms
 long lastDraw = 0;
 long lastUpdate = 0;
 
-long drawInterval = 100000;
+long drawInterval = 20000;
 long updateInterval = 25000;
 
 void loopLEDPanels(){

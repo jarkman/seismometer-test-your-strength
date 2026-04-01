@@ -24,6 +24,9 @@ Select esp32/Feather ESP32-S3 2MB PSRAM
 #include <Adafruit_MMA8451.h>
 #include <Adafruit_Sensor.h>
 
+
+// #define GRAPH_ACCELEROMETER
+
 hw_timer_t *accelerometerTimer = NULL;
 
 Adafruit_MMA8451 mma = Adafruit_MMA8451();
@@ -137,12 +140,15 @@ void readAccelerometer()
       pulse ++;
       if( pulse>50)
         pulse = 0;
+
+      #ifdef GRAPH_ACCELEROMETER
       // make separate pulses visible in the graph
       for( int i = 0; i< 20; i ++ )
       {
         Serial.print(pulse);
         Serial.println(",0,0,0,0");
       }
+      #endif
     }
     was = true;
     /*
@@ -155,6 +161,7 @@ void readAccelerometer()
     Serial.print(",      ");
     */
 
+#ifdef GRAPH_ACCELEROMETER
     //Serial.print(interval);
     //Serial.print(", ");
     Serial.print(pulse);
@@ -169,6 +176,7 @@ void readAccelerometer()
     Serial.print(my-mma.y);
     Serial.print(", ");
     Serial.println(mz-mma.z);
+  #endif
   }
   else
   {
