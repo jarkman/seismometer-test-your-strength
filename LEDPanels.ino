@@ -582,10 +582,10 @@ void bouncer()
 
   float pos;
 
-  float t = millis()/5000.0;
-  float s = sin(t*2.0*3.1415);
+  //float t = millis()/5000.0;
+  float s = vuLevel; //sin(t*2.0*3.1415);
 
-  pos = fmap(s, -1.0, 1.0, 5, panel.width()-10);
+  pos = fmap(s, 0, 1.0, 5, panel.width()-10);
 
   float fatness = fmap(pos,5,panel.width()-10,2,15);
 

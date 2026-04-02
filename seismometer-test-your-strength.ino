@@ -99,6 +99,8 @@ void loopAccelerometer()
   readAccelerometer();
 }
 
+float vuLevel = 0;
+#define USE_LOGS
 void readAccelerometer()
 {
   // can't do i2c inside an interrupt handler
@@ -121,18 +123,46 @@ void readAccelerometer()
   else
   {
     
-
+    // maintain a rolling-average of the signal as a noise floor
     mx = a1*mx+a2*mma.x;
     my = a1*my+a2*mma.y;
     mz = a1*mz+a2*mma.z;
   }
   
-  double t = expectedNoise*4.5;
+  double t = expectedNoise*4.5; // set a threshold from the sensor noise we've seen with complete quiet
 
   double noise = (fabs(mx-mma.x) + fabs(my-mma.y) + fabs(mz-mma.z))/3.0;
 
-  mn = a1*mn+a2*noise;
+  mn = a1*mn+a2*noise;  // maintain a rolling average of the total signal
 
+#ifdef USE_LOGS
+  float noiseLimit = 50; // TODO - calibrate
+  float logNoise;
+
+  if(noise>expectedNoise)
+    logNoise = log10((noise-expectedNoise)*10.0/noiseLimit); // range is 0 to 1
+  else
+    logNoise = 0;
+
+  if(logNoise < 0)
+    logNoise = 0;
+
+  if(logNoise > 1)
+    logNoise = 1;
+
+  if( logNoise > vuLevel)
+    vuLevel = logNoise;
+  else
+    vuLevel = vuLevel*0.98 - 0.01;
+
+  Serial.print("noise-expected "); Serial.print(noise-expectedNoise);
+Serial.print("  logNoise "); Serial.print(logNoise);
+Serial.print(  "  vuLevel "); Serial.println(vuLevel);
+
+
+#endif //USE_LOGS
+
+#ifdef THRESHOLDING
   if( fabs(mx-mma.x)>t || fabs(my-mma.y)>t || fabs(mz-mma.z)>t )
   {
     if( ! was)
@@ -182,5 +212,5 @@ void readAccelerometer()
   {
     was = false;
   }
-
+#endif //THRESHOLDING
 }
