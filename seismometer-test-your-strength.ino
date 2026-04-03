@@ -23,7 +23,16 @@ Select esp32/Feather ESP32-S3 2MB PSRAM
 #include <Wire.h>
 #include <Adafruit_MMA8451.h>
 #include <Adafruit_Sensor.h>
+#include <CircularBuffer.hpp>
 
+
+struct sample
+{
+  unsigned long ms; // good for 50 days
+  float accel;
+};
+
+CircularBuffer<struct sample, 1000> accelBuffer; // big enough for any single hit
 
 // #define GRAPH_ACCELEROMETER
 
@@ -91,7 +100,7 @@ void loop() {
   }
   loopLEDPanels();
   loopAccelerometer();
-  delay(10);
+  delay(1);
 }
 
 void loopAccelerometer()
@@ -99,7 +108,129 @@ void loopAccelerometer()
   readAccelerometer();
 }
 
+#define NUM_GREATEST_HITS 10
+struct sample greatestHits[NUM_GREATEST_HITS];
+
+int addGreatestHit(unsigned long ms, float accel)
+{
+
+  unsigned long now = millis();
+
+  Serial.println("before purge---------");
+  // print the array
+  for(int i = 0; i <NUM_GREATEST_HITS; i ++) // biggest hits first
+  {
+    Serial.print("Hit ");
+      Serial.print(i);
+      Serial.print(" ms ");
+      Serial.print(ms);
+      Serial.print(" accel ");
+      Serial.println( accel );
+  }
+  Serial.println();
+
+  //purge old hits, move others up, fill with 0s
+  for(int i = 0; i <NUM_GREATEST_HITS; i ++) 
+  {
+    if( greatestHits[i].ms != 0 && greatestHits[i].ms < now-60*60*1000) // an hour ago
+    {
+      Serial.print("Purging "); Serial.println(i);
+
+      //for(int j = i; j<NUM_GREATEST_HITS-1; j++)
+      //  greatestHits[j] = greatestHits[j+1];
+
+      greatestHits[NUM_GREATEST_HITS-1].ms = 0;
+      greatestHits[NUM_GREATEST_HITS-1].accel = 0;
+    }
+  }
+
+Serial.println("after purge---------");
+  // print the array
+  for(int i = 0; i <NUM_GREATEST_HITS; i ++) // biggest hits first
+  {
+    Serial.print("Hit ");
+      Serial.print(i);
+      Serial.print(" ms ");
+      Serial.print(ms);
+      Serial.print(" accel ");
+      Serial.println( accel );
+  }
+  Serial.println();
+
+  for(int i = 0; i <NUM_GREATEST_HITS; i ++) // biggest hits first
+  {
+    Serial.print("Comparing hit ");
+      Serial.print(i);
+      Serial.print(" ms ");
+      Serial.print(ms);
+      Serial.print(" accel ");
+      Serial.println( accel );
+
+    if(accel > greatestHits[i].accel)
+    {
+      // move everything along
+      //for(int j = NUM_GREATEST_HITS-2; j>=i; j--)
+      //  greatestHits[j+1] = greatestHits[j];
+
+      greatestHits[i].ms = ms;
+      greatestHits[i].accel = accel;
+
+      Serial.print("Inserting hit ");
+      Serial.print(i);
+      Serial.print(" ms ");
+      Serial.print(ms);
+      Serial.print(" accel ");
+      Serial.println( accel );
+
+
+      return i;
+    }
+  }
+
+  return -1;
+}
+
+int logBurst()
+{
+  using index_t = decltype(accelBuffer)::index_t;
+	
+  unsigned long start = 0;
+  if( accelBuffer.size() < 1)
+    return -1;
+
+  start = accelBuffer[0].ms;
+
+  float maxAccel = 0.0;
+
+  for (index_t i = 0; i < accelBuffer.size(); i++) 
+  {
+    if(accelBuffer[i].accel > maxAccel)
+      maxAccel = accelBuffer[i].accel;
+
+	  Serial.print( i );
+    Serial.print( ", " );
+    Serial.print( accelBuffer[i].ms - start );
+    Serial.print( ", " );
+    Serial.println( accelBuffer[i].accel );
+ 
+  }
+
+  int hit = addGreatestHit(accelBuffer[0].ms, maxAccel);
+
+  if( hit > -1 )
+  {
+    Serial.print("Greatest hit ");
+    Serial.println(hit);
+  }
+  Serial.println();
+  Serial.println();
+
+  return hit;
+}
 float vuLevel = 0;
+long burstStart = 0;
+bool inBurst = false;
+
 #define USE_LOGS
 void readAccelerometer()
 {
@@ -133,9 +264,37 @@ void readAccelerometer()
 
   double noise = (fabs(mx-mma.x) + fabs(my-mma.y) + fabs(mz-mma.z))/3.0;
 
+  if(noise>t)
+  {
+    if( ! inBurst)
+    {
+      burstStart = millis();
+      inBurst = true;
+      accelBuffer.clear();
+    }
+  }
+  else
+  {
+    if(millis()-burstStart > 200 && inBurst)
+    {
+      inBurst = false;
+      logBurst();
+    }
+  }
+
+  // keep a buffer for each burst so we can measure its size after it ends
+  if(inBurst)
+  {
+    struct sample sample;
+
+    sample.ms = millis();
+    sample.accel = noise;
+    accelBuffer.push(sample);
+  }
   mn = a1*mn+a2*noise;  // maintain a rolling average of the total signal
 
 #ifdef USE_LOGS
+// bar display happens at all times, not just in bursts
   float noiseLimit = 50; // TODO - calibrate
   float logNoise;
 
@@ -153,11 +312,11 @@ void readAccelerometer()
   if( logNoise > vuLevel)
     vuLevel = logNoise;
   else
-    vuLevel = vuLevel*0.98 - 0.01;
+    vuLevel = vuLevel*(1.0-interval/2000000.0);
 
-  Serial.print("noise-expected "); Serial.print(noise-expectedNoise);
-Serial.print("  logNoise "); Serial.print(logNoise);
-Serial.print(  "  vuLevel "); Serial.println(vuLevel);
+ // Serial.print("noise-expected "); Serial.print(noise-expectedNoise);
+//Serial.print("  logNoise "); Serial.print(logNoise);
+//Serial.print(  "  vuLevel "); Serial.println(vuLevel);
 
 
 #endif //USE_LOGS

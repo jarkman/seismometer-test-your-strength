@@ -585,7 +585,7 @@ void bouncer()
   //float t = millis()/5000.0;
   float s = vuLevel; //sin(t*2.0*3.1415);
 
-  pos = fmap(s, 0, 1.0, 5, panel.width()-10);
+  pos = fmap(s, 0, 1.0, 0, panel.width()-10);
 
   float fatness = fmap(pos,5,panel.width()-10,2,15);
 
@@ -674,10 +674,7 @@ if(now-lastUpdate>updateInterval)
 }
 #endif
 
-#ifdef USE_INTERRUPTS
-  delay(100); // need some delay to allow UpdateFrame to run - if this is to short we get uneven brightness, because updates don't happen while draw() is running
-#endif //USE_INTERRUPTS
-  
+ 
   // assorted useful tests
   //testText1to8();
   //panel.drawCircle(5,5,5,LED_WHITE);
