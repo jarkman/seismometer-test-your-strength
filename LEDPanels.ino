@@ -591,6 +591,14 @@ void bouncer()
   float fatness = fmap(pos,5,panel.width()-10,2,15);
 
   //Serial.print("s "); Serial.print(s); Serial.print(" pos "); Serial.println(pos);
+  
+  if(pos>panel.width()/2)
+  {
+    int b = pos-panel.width()/2;
+
+    fuzzyBar(pos-fatness/2, b*2, LED_GREEN);
+  }
+
   fuzzyBar(pos, fatness, LED_MAGENTA);
   fuzzyBar(pos+fatness/2, fatness/2, LED_CYAN);
 
@@ -616,7 +624,7 @@ void spinner()
   pos = fmod(pos,w);
   lastT = now;
 
-  fuzzyBlob(w-5, (int)pos, 4,8, LED_RED);
+  fuzzyBlob(w-2, (int)pos, 1,2, LED_RED);
   /*
   // short vertical line
   for( int x =w-1; x>w-10; x--)
