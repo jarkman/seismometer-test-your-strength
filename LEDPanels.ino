@@ -310,6 +310,7 @@ void setupLEDPanels() {
   //FillBuffer(0xFF);         // Set all LEDs on. (White)
   FillBuffer(0x00);         // Set all LEDs off. (Black)
 
+  
 #ifdef USE_INTERRUPTS
   // initialize Timer 
   // Create semaphore to inform us when the timer has fired
@@ -593,6 +594,11 @@ void bouncer()
   fuzzyBar(pos, fatness, LED_MAGENTA);
   fuzzyBar(pos+fatness/2, fatness/2, LED_CYAN);
 
+  if(hiscoreIndex != -1)
+  {
+    drawHiscore(pos, hiscoreIndex);
+  }
+
 }
 // a moving light near the top to stop people walking into it
 void spinner()
@@ -623,6 +629,22 @@ void spinner()
   
 }
 
+
+void drawHiscore(int pos, int index)
+{
+  char scoreBuffer[12];
+
+  for( int y = 0; y < panel.height(); y+= panel.height()/4)
+  {
+    panel.setCursor(pos+5, 1+y);
+    panel.setTextColor(LED_WHITE);  
+    panel.setTextSize(2);
+    sprintf(scoreBuffer,"%02d", index);
+    panel.println(scoreBuffer);
+  }
+
+}
+
 void draw() // currently takes around 1ms
 {
   if( flagUpdatingFrame ) // don't draw during update, to avoid tearing
@@ -639,6 +661,7 @@ void draw() // currently takes around 1ms
 
   spinner();
   
+
   drawDuration = micros()-startT;
 
   flagDrawing = false;
