@@ -100,6 +100,9 @@ the various text functions and fonts.
 #define USE_INTERRUPTS
 #define TIME_DRAWING
 
+#define SHOW_HISCORE
+
+
 class LedPanel : public Adafruit_GFX
 {
   public:
@@ -602,10 +605,12 @@ void bouncer()
   fuzzyBar(pos, fatness, LED_MAGENTA);
   fuzzyBar(pos+fatness/2, fatness/2, LED_CYAN);
 
+#ifdef SHOW_HISCORE
   if(hiscoreIndex != -1)
   {
     drawHiscore(pos, hiscoreIndex);
   }
+#endif
 
 }
 // a moving light near the top to stop people walking into it
@@ -642,7 +647,7 @@ void drawHiscore(int pos, int index)
 {
   char scoreBuffer[12];
 
-  for( int y = 0; y < panel.height(); y+= panel.height()/4)
+  for( int y = 0; y < panel.height(); y+= panel.height()/4) // draw on all 4 sides
   {
     panel.setCursor(pos+5, 1+y);
     panel.setTextColor(LED_WHITE);  

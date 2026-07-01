@@ -77,7 +77,7 @@ void setupAccelerometer()
   // 800hz gives a noise of 8
   // our loop, with printing in, is running at 500hz
   mma.setDataRate(MMA8451_DATARATE_100_HZ); //MMA8451_DATARATE_800_HZ);
-  expectedNoise = 3;
+  expectedNoise = 1; //3;
 
   Serial.print("Range = "); Serial.print(2 << mma.getRange());  
   Serial.println("G");
@@ -279,7 +279,7 @@ void readAccelerometer()
   double noise = (fabs(mx-mma.x) + fabs(my-mma.y) + fabs(mz-mma.z))/3.0;
 
   
-  if(noise>t)
+  if(noise>t)  // start a burst when we go over the threshold
   {
     if( ! inBurst)
     {
@@ -290,10 +290,10 @@ void readAccelerometer()
   }
   else
   {
-    if(millis()-burstStart > 200 && inBurst)
+    if(millis()-burstStart > 4000 && inBurst) // end of burst is a fixed time after the start - this is long enough for the VU fade to complete
     {
       inBurst = false;
-      hiscoreIndex = logBurst();
+      hiscoreIndex = logBurst(); // log it and pick its position in the table
 
     }
   }
